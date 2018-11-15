@@ -26,3 +26,10 @@ struct Hole : SVGScrew {
         box.size = sw->box.size;
     }
 };
+struct Hole2 : SVGScrew {
+    Hole2() {
+        sw->svg = SVG::load(assetPlugin(plugin, "res/Hole2.svg"));
+        sw->wrap();
+        box.size = sw->box.size;
+    }
+};

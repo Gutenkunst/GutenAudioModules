@@ -25,7 +25,6 @@ struct Chorus : Module {
 	};
 
 	float phase = 0.0;
-	float blinkPhase = 0.0;
     float delayInSeconds = 0.025f;
     float sampleRate = engineGetSampleRate();
     RingBuffer<float, 16384> buffer{};
@@ -68,27 +67,23 @@ void Chorus::step() {
 		phase -= 1.0f;
 
 	// Compute the sine output
-	float sine = (sinf(2.0f * M_PI * phase) + 1.f) * 0.015f * sampleRate;
+    float sineBetween0and1 = (sinf(2.0f * M_PI * phase) + 1.f) * .5f;
+	float sine = sineBetween0and1 * 0.015f * sampleRate;
     float side = buffer.data[buffer.mask(buffer.start - sine)];
 
     outputs[LEFT_OUTPUT].value = inputs[MONO_INPUT].value * (1 - wet) + side * wet;
 
-	// Blink light at 1Hz
-	blinkPhase += deltaTime;
-	if (blinkPhase >= 1.0f)
-		blinkPhase -= 1.0f;
-	lights[BLINK_LIGHT].value = (blinkPhase < 0.5f) ? 1.0f : 0.0f;
+	lights[BLINK_LIGHT].value = sineBetween0and1;
 }
-
 
 struct ChorusWidget : ModuleWidget {
 	ChorusWidget(Chorus *module) : ModuleWidget(module) {
 		setPanel(SVG::load(assetPlugin(plugin, "res/Chorus.svg")));
 
         addChild(Widget::create<Schraube>(Vec(RACK_GRID_WIDTH, 0)));
-		addChild(Widget::create<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, 0)));
-		addChild(Widget::create<ScrewSilver>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
-		addChild(Widget::create<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
+		addChild(Widget::create<Hole2>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, 0)));
+		addChild(Widget::create<Hole2>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
+		addChild(Widget::create<Schraube>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
         addParam(ParamWidget::create<Davies1900hBlackKnob>(Vec(28, 20), module, Chorus::STEREO_PARAM, 0.0, 1.0, 0.0));
         addParam(ParamWidget::create<Davies1900hBlackKnob>(Vec(28, 60), module, Chorus::WET_PARAM, 0.0, 1.0, 0.5));

@@ -49,7 +49,7 @@ struct EnvelopeFollowerWidget : ModuleWidget {
 	EnvelopeFollowerWidget(EnvelopeFollower *module) : ModuleWidget(module) {
 		setPanel(SVG::load(assetPlugin(plugin, "res/EnvelopeFollower.svg")));
 
-		addChild(Widget::create<ScrewSilver>(Vec(RACK_GRID_WIDTH, 0)));
+		addChild(Widget::create<Hole2>(Vec(RACK_GRID_WIDTH, 0)));
 		addChild(Widget::create<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, 0)));
 		addChild(Widget::create<ScrewSilver>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 		addChild(Widget::create<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));

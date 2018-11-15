@@ -92,7 +92,7 @@ struct gtn440Widget : ModuleWidget {
         addChild(Widget::create<Hole>(Vec(RACK_GRID_WIDTH, 0)));
         addChild(Widget::create<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, 0)));
         addChild(Widget::create<ScrewSilver>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
-        addChild(Widget::create<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
+        addChild(Widget::create<Hole2>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
         addParam(ParamWidget::create<LEDBezel>(mm2px(Vec(6.57, 48.165)), module, gtn440::PITCH_PARAM + 0, 0.0f, 1.0f, 0.0f));
         addParam(ParamWidget::create<LEDBezel>(mm2px(Vec(18.214, 53.164)), module, gtn440::PITCH_PARAM + 1, 0.0f, 1.0f, 0.0f));
