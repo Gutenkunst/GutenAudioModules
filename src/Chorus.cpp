@@ -1,5 +1,6 @@
 #include "Guten.hpp"
 #include "dsp/ringbuffer.hpp"
+#include "dsp/filter.hpp"
 
 
 struct Chorus : Module {
@@ -17,6 +18,7 @@ struct Chorus : Module {
 	enum OutputIds {
         LEFT_OUTPUT,
         RIGHT_OUTPUT,
+        NOISE_OUTPUT,
 		NUM_OUTPUTS
 	};
 	enum LightIds {
@@ -27,6 +29,7 @@ struct Chorus : Module {
 	float phase = 0.0;
     float delayInSeconds = 0.025f;
     float sampleRate = engineGetSampleRate();
+    RCFilter lowpass[200]{};
     RingBuffer<float, 16384> buffer{};
 
 	Chorus() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {}
@@ -42,6 +45,11 @@ struct Chorus : Module {
         {
             buffer.push(0);
         }
+
+        for (auto filter : lowpass)
+        {
+            filter.setCutoff(20.f / sampleRate);
+        }
     }
 };
 
@@ -49,6 +57,13 @@ struct Chorus : Module {
 void Chorus::step() {
     buffer.push(inputs[MONO_INPUT].value);
     buffer.shift();
+    float noise = 2.0 * randomNormal();
+
+    for (auto filter : lowpass)
+    {
+        filter.process(noise);
+        noise = filter.lowpass();
+    }
 
     float stereo = params[STEREO_PARAM].value;
     float wet = params[WET_PARAM].value;
@@ -68,12 +83,17 @@ void Chorus::step() {
 
 	// Compute the sine output
     float sineBetween0and1 = (sinf(2.0f * M_PI * phase) + 1.f) * .5f;
-	float sine = sineBetween0and1 * 0.015f * sampleRate;
-    float side = buffer.data[buffer.mask(buffer.start - sine)];
+    float modSignal = ( sineBetween0and1 + noise ) * 0.015f * sampleRate;
+    float M = floor(modSignal);
+    float frac = (modSignal - M); //(n - [M + I])frac + z(n - M)(1 - frac)
+    float side = buffer.data[buffer.mask(buffer.start - (M + 1))]*frac
+               + buffer.data[buffer.mask(buffer.start -  M)     ]*(1 - frac);
 
     outputs[LEFT_OUTPUT].value = inputs[MONO_INPUT].value * (1 - wet) + side * wet;
+    outputs[RIGHT_OUTPUT].value = inputs[MONO_INPUT].value * (1 - wet) + side * wet;
+    outputs[NOISE_OUTPUT].value = noise;
 
-	lights[BLINK_LIGHT].value = sineBetween0and1;
+	lights[BLINK_LIGHT].value = noise;
 }
 
 struct ChorusWidget : ModuleWidget {
@@ -94,6 +114,7 @@ struct ChorusWidget : ModuleWidget {
 
         addOutput(Port::create<PJ301MPort>(Vec(33, 220), Port::OUTPUT, module, Chorus::LEFT_OUTPUT));
         addOutput(Port::create<PJ301MPort>(Vec(33, 260), Port::OUTPUT, module, Chorus::RIGHT_OUTPUT));
+        addOutput(Port::create<PJ301MPort>(Vec(33, 300), Port::OUTPUT, module, Chorus::NOISE_OUTPUT));
 
 		addChild(ModuleLightWidget::create<MediumLight<RedLight>>(Vec(41, 330), module, Chorus::BLINK_LIGHT));
 	}
