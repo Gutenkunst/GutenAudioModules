@@ -26,14 +26,19 @@ struct Chorus : Module {
 		NUM_LIGHTS
 	};
 
+    float noisePhase = 1.0;
+    float oldNoise = 0.0f;
+    float newNoise = 0.0f;
+    float noiseFreq = .8f;
+
 	float phase = 0.0;
     float delayInSeconds = 0.025f;
     float sampleRate = engineGetSampleRate();
-    RCFilter lowpass[200]{};
     RingBuffer<float, 16384> buffer{};
 
 	Chorus() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {}
 	void step() override;
+    float mix(float a, float b, float mix);
 
 	// For more advanced Module features, read Rack's engine.hpp header file
 	// - toJson, fromJson: serialization of internal data
@@ -45,36 +50,38 @@ struct Chorus : Module {
         {
             buffer.push(0);
         }
-
-        for (auto filter : lowpass)
-        {
-            filter.setCutoff(20.f / sampleRate);
-        }
     }
 };
 
+float Chorus::mix(float a, float b, float amountOfB)
+{
+    return (1 - amountOfB) * a + amountOfB * b;
+}
 
 void Chorus::step() {
+    float deltaTime = engineGetSampleTime();
+
     buffer.push(inputs[MONO_INPUT].value);
     buffer.shift();
-    float noise = 2.0 * randomNormal();
 
-    for (auto filter : lowpass)
+    noisePhase += noiseFreq * deltaTime;
+    if(noisePhase >= 1.f)
     {
-        filter.process(noise);
-        noise = filter.lowpass();
+        noisePhase -= 1.f;
+        oldNoise = newNoise;
+        newNoise = randomNormal();
     }
+
+    float noise = mix(oldNoise, newNoise, noisePhase);
 
     float stereo = params[STEREO_PARAM].value;
     float wet = params[WET_PARAM].value;
     float mod = params[MOD_PARAM].value;
 
-    float deltaTime = engineGetSampleTime();
-
 	float pitch = mod + inputs[MOD_INPUT].value;
 	pitch = clamp(pitch, -4.0f, 4.0f);
 
-	float freq = .8f * powf(2.0f, pitch);
+	float freq = .5f * powf(2.0f, pitch);
 
 	// Accumulate the phase
 	phase += freq * deltaTime;
@@ -83,7 +90,7 @@ void Chorus::step() {
 
 	// Compute the sine output
     float sineBetween0and1 = (sinf(2.0f * M_PI * phase) + 1.f) * .5f;
-    float modSignal = ( sineBetween0and1 + noise ) * 0.015f * sampleRate;
+    float modSignal = mix(sineBetween0and1, noise + 1.f, stereo) * 0.015f * sampleRate;
     float M = floor(modSignal);
     float frac = (modSignal - M); //(n - [M + I])frac + z(n - M)(1 - frac)
     float side = buffer.data[buffer.mask(buffer.start - (M + 1))]*frac
